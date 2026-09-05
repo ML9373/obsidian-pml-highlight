@@ -37,7 +37,7 @@
 <body>
 <div class="caption" id="caption">
   <strong>syd-pml-highlight</strong> — rendering preview generated from this plugin's real
-  <code>styles.css</code> (linked, not duplicated) and a JS port of <code>src/main.ts</code>'s tokenizer.
+  <code>styles.css</code> (linked, not duplicated) and a JS port of <code>src/tokenizer.ts</code>.
   Colors are Obsidian's documented default theme variables — an approximation, not a live Obsidian
   screenshot. Re-run this after any change to the tokenizer or to <code>styles.css</code>.
 </div>
@@ -53,9 +53,10 @@
 </div>
 
 <script>
-// Keep this tokenizer in sync with tokenizePmlLine/KEYWORDS/TYPES/TOKEN_RE in src/main.ts.
+// Keep this tokenizer in sync with src/tokenizer.ts (tokenizePmlLine/KEYWORDS/TYPES/TOKEN_RE).
+// That module is covered by test/tokenizer.test.ts; this port is not, so diff the two when either changes.
 // It's a plain-JS port (this page isn't compiled), not an import, precisely so it can run
-// standalone without a build step — diff it against src/main.ts if either one changes.
+// standalone without a build step - diff it against src/tokenizer.ts if either one changes.
 const KEYWORDS = new Set([
   "DEFINE","METHOD","ENDMETHOD","OBJECT","ENDOBJECT","FUNCTION","ENDFUNCTION",
   "IF","THEN","ELSEIF","ELSE","ENDIF","DO","ENDDO","WHILE","VALUES","INDICES",
@@ -182,7 +183,7 @@ for (const target of ["light-blocks", "dark-blocks"]) {
 fetch("manifest.json").then(r => r.json()).then(m => {
   document.getElementById("caption").innerHTML =
     `<strong>${m.name} v${m.version}</strong> — rendering preview generated from this plugin's real ` +
-    `<code>styles.css</code> (linked, not duplicated) and a JS port of <code>src/main.ts</code>'s tokenizer. ` +
+    `<code>styles.css</code> (linked, not duplicated) and a JS port of <code>src/tokenizer.ts</code>. ` +
     `Colors are Obsidian's documented default theme variables — an approximation, not a live Obsidian ` +
     `screenshot. Re-run this after any change to the tokenizer or to <code>styles.css</code>.`;
 }).catch(() => {});

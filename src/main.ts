@@ -12,14 +12,13 @@ import {
 import { Compartment, EditorState, RangeSetBuilder, Text } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { foldService, foldGutter, foldKeymap } from "@codemirror/language";
+import { parseExtraTypes, tokenizePmlLine } from "./tokenizer";
+import { computeFoldRange, isPmlFenceStart, isPmlFenceEnd } from "./folding";
 
 const PML_FILE_VIEW_TYPE = "pml-file-view";
 const PML_FILE_EXTENSIONS = ["pml", "pmlobj", "pmlfnc", "pmlfrm", "pmlmac", "pmlcmd"];
 
-interface Token {
-	text: string;
-	cls: string | null;
-}
+// Token, KEYWORDS, TYPES, parseExtraTypes and tokenizePmlLine live in ./tokenizer
 
 type TokenKey =
 	| "keyword"
@@ -107,85 +106,7 @@ const DEFAULT_SETTINGS: PmlSettings = {
 	colors: defaultColors(),
 };
 
-const KEYWORDS = new Set([
-	"DEFINE", "METHOD", "ENDMETHOD", "OBJECT", "ENDOBJECT", "FUNCTION", "ENDFUNCTION",
-	"IF", "THEN", "ELSEIF", "ELSE", "ENDIF", "DO", "ENDDO", "WHILE", "VALUES", "INDICES",
-	"FROM", "TO", "HANDLE", "ANY", "ELSEHANDLE", "ENDHANDLE", "SKIP", "BREAK", "EXIT",
-	"GOLABEL", "LABEL", "RETURN", "MEMBER", "VAR", "NEW", "IMPORT", "USING", "NAMESPACE",
-	"SETUP", "ENDSETUP", "COLLECT", "WITH", "FOR", "ALL", "NOT", "AND", "OR", "IS",
-	"LOCAL", "GLOBAL", "DELETE", "CALL", "CALLBACK",
-]);
-
-const TYPES = new Set([
-	"STRING", "ARRAY", "REAL", "BOOLEAN", "DBREF", "FILE", "COLLECTION", "GADGET",
-	"REF", "TEXT", "UDA", "DBWALK", "PMLOBJECT",
-]);
-
-function parseExtraTypes(raw: string): Set<string> {
-	return new Set(
-		raw.split(/[,\n]/).map((s) => s.trim().toUpperCase()).filter(Boolean)
-	);
-}
-
 // Order matters: strings, then !!global / !local, then :uda, then numbers, then words, then whitespace/other.
-const TOKEN_RE = /'[^']*'|\|[^|]*\||!!\w+|!\w+|:\w+|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*|\s+|./g;
-
-/**
- * PML has no multi-line strings or block comments (per pml-customization-guide):
- * `$*` starts a line comment, `'...'` / `|...|` are single-line string literals.
- * A per-line tokenizer is therefore sufficient — no cross-line state needed.
- */
-export function tokenizePmlLine(line: string, extraTypes: Set<string> = new Set()): Token[] {
-	const commentIdx = line.indexOf("$*");
-	const code = commentIdx >= 0 ? line.slice(0, commentIdx) : line;
-	const comment = commentIdx >= 0 ? line.slice(commentIdx) : "";
-
-	const tokens: Token[] = [];
-	let m: RegExpExecArray | null;
-	TOKEN_RE.lastIndex = 0;
-	while ((m = TOKEN_RE.exec(code))) {
-		const t = m[0];
-		if (/^\s+$/.test(t)) {
-			tokens.push({ text: t, cls: null });
-			continue;
-		}
-		if (t.startsWith("'") || t.startsWith("|")) {
-			tokens.push({ text: t, cls: "pml-string" });
-			continue;
-		}
-		if (t.startsWith("!!")) {
-			tokens.push({ text: t, cls: "pml-var-global" });
-			continue;
-		}
-		if (t.startsWith("!")) {
-			tokens.push({ text: t, cls: "pml-var-local" });
-			continue;
-		}
-		if (t.startsWith(":")) {
-			tokens.push({ text: t, cls: "pml-uda" });
-			continue;
-		}
-		if (/^\d/.test(t)) {
-			tokens.push({ text: t, cls: "pml-number" });
-			continue;
-		}
-		if (/^[A-Za-z_]/.test(t)) {
-			const upper = t.toUpperCase();
-			if (KEYWORDS.has(upper)) {
-				tokens.push({ text: t, cls: "pml-keyword" });
-			} else if (TYPES.has(upper) || extraTypes.has(upper)) {
-				tokens.push({ text: t, cls: "pml-type" });
-			} else {
-				tokens.push({ text: t, cls: null });
-			}
-			continue;
-		}
-		tokens.push({ text: t, cls: "pml-operator" });
-	}
-	if (comment) tokens.push({ text: comment, cls: "pml-comment" });
-	return tokens;
-}
-
 /** Reading mode: ```pml fenced code block processor. */
 export function renderPmlBlock(source: string, el: HTMLElement, settings: PmlSettings) {
 	const pre = el.createEl("pre", { cls: "pml-code-block" });
@@ -238,10 +159,10 @@ function buildPmlDecorations(view: EditorView, settings: PmlSettings, wholeFile 
 		if (!wholeFile) {
 			const trimmed = line.text.trim();
 			if (!inBlock) {
-				if (/^```+\s*pml\s*$/i.test(trimmed)) inBlock = true;
+				if (isPmlFenceStart(trimmed)) inBlock = true;
 				continue;
 			}
-			if (/^```+\s*$/.test(trimmed)) {
+			if (isPmlFenceEnd(trimmed)) {
 				inBlock = false;
 				continue;
 			}
@@ -283,76 +204,17 @@ function createPmlViewPlugin(plugin: PmlHighlightPlugin, wholeFile = false) {
 	);
 }
 
-/**
- * Block pairs deliberately scoped to the unambiguous ones: `if/endif`, `do/enddo`,
- * `define method|function|object/end...`, `setup form/endsetup`, `handle/endhandle`.
- * `elseif`/`else`/`elsehandle` are continuations, not openers or closers (excluded by
- * the leading-anchor `^` — they never start with "if"/"handle").
- *
- * `setup command ... exit` and gadget blocks (`view ... exit`, `frame ... exit`) are
- * deliberately NOT folded here: `exit` is a generic terminator shared by several
- * different openers, so matching it correctly would need full construct-tracking —
- * out of scope for this pass, and a wrong fold range is worse than no fold.
- *
- * In practice this also limits `setup form` folding: a form with nested gadget
- * containers (view/frame/container) commonly closes the outer `setup form` with
- * `exit` too, not `endsetup` (confirmed in this repo's own TestHighlighting.pmlfrm
- * fixture) — only `endsetup`-terminated forms fold. `define method`/`function`/`object`
- * inside such a file are unaffected and still fold normally.
- */
-const FOLD_OPEN_RE = /^(if|do|define\s+(method|function|object)|setup\s+form|handle)\b/i;
-const FOLD_CLOSE_RE = /^(endif|enddo|endmethod|endfunction|endobject|endsetup|endhandle)\b/i;
-const FOLD_CLOSE_ANYWHERE_RE = /\b(endif|enddo|endmethod|endfunction|endobject|endsetup|endhandle)\b/i;
-
-function isPmlFenceStart(text: string): boolean {
-	return /^```+\s*pml\s*$/i.test(text.trim());
-}
-function isPmlFenceEnd(text: string): boolean {
-	return /^```+\s*$/.test(text.trim());
-}
-
-/** Whether `lineNumber` sits inside a ```pml fence, by scanning from the top — mirrors buildPmlDecorations's fence tracking. */
-function isInsidePmlFence(doc: Text, lineNumber: number): boolean {
-	let inBlock = false;
-	for (let i = 1; i < lineNumber; i++) {
-		const text = doc.line(i).text;
-		if (!inBlock) {
-			if (isPmlFenceStart(text)) inBlock = true;
-		} else if (isPmlFenceEnd(text)) {
-			inBlock = false;
-		}
-	}
-	return inBlock;
-}
+// Fold regexes, fence helpers and the depth-matching algorithm now live in ./folding
 
 function createPmlFoldService(plugin: PmlHighlightPlugin, wholeFile: boolean) {
 	return foldService.of((state, lineStart) => {
 		if (!plugin.settings.enableFolding) return null;
 		const startLine = state.doc.lineAt(lineStart);
-		if (!wholeFile && !isInsidePmlFence(state.doc, startLine.number)) return null;
-
-		const trimmed = startLine.text.trim();
-		if (!FOLD_OPEN_RE.test(trimmed)) return null;
-		if (FOLD_CLOSE_ANYWHERE_RE.test(trimmed)) return null; // opener and closer on the same line — nothing to fold
-
-		let depth = 1;
-		let line = startLine;
-		while (line.number < state.doc.lines) {
-			line = state.doc.line(line.number + 1);
-			const t = line.text.trim();
-			if (!wholeFile && isPmlFenceEnd(t)) return null; // fence ended before a matching closer — malformed, don't fold
-			if (FOLD_OPEN_RE.test(t) && !FOLD_CLOSE_ANYWHERE_RE.test(t)) {
-				depth++;
-			} else if (FOLD_CLOSE_RE.test(t)) {
-				depth--;
-				if (depth === 0) {
-					if (line.number <= startLine.number + 1) return null;
-					const prevLine = state.doc.line(line.number - 1);
-					return { from: startLine.to, to: prevLine.to };
-				}
-			}
-		}
-		return null;
+		// The pure algorithm works on plain lines so it can be unit-tested outside CodeMirror.
+		const lines = state.doc.toString().split("\n");
+		const range = computeFoldRange(lines, startLine.number, wholeFile);
+		if (!range) return null;
+		return { from: state.doc.line(range.startLine).to, to: state.doc.line(range.endLine).to };
 	});
 }
 
