@@ -1,6 +1,6 @@
 # PML Syntax Highlighting for Obsidian
 
-Colors AVEVA PML/PML2 code: ` ```pml ` fenced blocks in notes (Reading mode and Live Preview), and raw `.pml`, `.pmlobj`, `.pmlfnc`, `.pmlfrm`, `.pmlmac`, `.pmlcmd` files opened directly. Also folds PML blocks.
+Colors AVEVA PML1/PML2 code: ` ```pml ` fenced blocks in notes (Reading mode and Live Preview), and raw `.pml`, `.pmlobj`, `.pmlfnc`, `.pmlfrm`, `.pmlmac`, `.pmlcmd` files opened directly. Also folds PML blocks.
 
 ![PML syntax highlighting in light and dark themes](docs/preview.png)
 
