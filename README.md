@@ -22,11 +22,9 @@ Colors AVEVA PML1/PML2 code: ` ```pml ` fenced blocks in notes (Reading mode and
 
 Not a language server: no autocompletion, no error diagnostics, no cross-file symbol resolution. Visual coloring plus light editing aids (folding, an editable raw-file view).
 
-*(This line used to say "no folding awareness of PML blocks" - folding shipped in v0.5.0.)*
-
 ## Install
 
-**From Obsidian** (once approved in the community plugin directory): Settings → Community plugins → Browse → search "PML Syntax Highlighting" → Install → Enable.
+**From Obsidian**: Settings → Community plugins → Browse → search "PML Syntax Highlighting" → Install → Enable.
 
 **Manual install**:
 
@@ -54,4 +52,4 @@ npm run dev   # esbuild watch mode
 npm run preview   # serves the repo at http://localhost:4321/preview.html
 ```
 
-Open the URL, and (optionally) screenshot both panels. The tokenizer in `preview.html` is a manual port of `tokenizePmlLine`/`KEYWORDS`/`TYPES`/`TOKEN_RE` in `src/main.ts` — if you change any of those, update `preview.html` to match, and add new coverage to its `BLOCKS` array. This is a close approximation of Obsidian's real rendering, not a substitute for actually checking inside Obsidian.
+Open the URL, and (optionally) screenshot both panels. The tokenizer in `preview.html` is a manual port of `tokenizePmlLine`/`KEYWORDS`/`TYPES`/`TOKEN_RE` in `src/tokenizer.ts` — if you change any of those, update `preview.html` to match, and add new coverage to its `BLOCKS` array. A new token class also needs its theme variable declared in `preview.html`'s own `:root` blocks, which only define the colors currently in use: without it the token renders in the default text color and the preview silently understates the change. This is a close approximation of Obsidian's real rendering, not a substitute for actually checking inside Obsidian.
