@@ -15,6 +15,7 @@ Colors AVEVA PML1/PML2 code: ` ```pml ` fenced blocks in notes (Reading mode and
 - Keywords (`define`, `method`, `endmethod`, `if/then/endif`, `do/enddo`, `handle any/endhandle`, …)
 - Built-in types (`STRING`, `ARRAY`, `REAL`, `DBREF`, …), plus user-defined extra type words (module-specific DB elements)
 - Numbers
+- Method and member names after a `.` (`!obj.method()`, `!!ce.owner.name`, `define method .foo()`)
 - Raw `.pml`-family files open in their own editable view (line numbers, undo/redo, same highlighting) — no more plain-text fallback for these extensions
 - Code folding for `if/endif`, `do/enddo`, `define method|function|object/end...`, `setup form/endsetup`, `handle/endhandle`, in both fenced blocks and raw files
 - Settings tab: toggle Reading mode / Live Preview / raw-file highlighting / folding independently, per-category color overrides

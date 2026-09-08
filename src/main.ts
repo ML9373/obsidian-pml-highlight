@@ -28,6 +28,7 @@ type TokenKey =
 	| "varLocal"
 	| "varGlobal"
 	| "uda"
+	| "method"
 	| "number"
 	| "operator";
 
@@ -67,6 +68,7 @@ const TOKEN_META: { key: TokenKey; cls: string; label: string; defaultColor: str
 	{ key: "varLocal", cls: "pml-var-local", label: "Local variables (!var)", defaultColor: "#c18401" },
 	{ key: "varGlobal", cls: "pml-var-global", label: "Global variables (!!var)", defaultColor: "#e45649" },
 	{ key: "uda", cls: "pml-uda", label: "UDA (:attribute)", defaultColor: "#0184bc" },
+	{ key: "method", cls: "pml-method", label: "Methods and members (.name)", defaultColor: "#d53984" },
 	{ key: "number", cls: "pml-number", label: "Numbers", defaultColor: "#c18401" },
 	{ key: "operator", cls: "pml-operator", label: "Operators", defaultColor: "#888888" },
 ];

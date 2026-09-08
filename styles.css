@@ -42,6 +42,10 @@
 	color: var(--color-cyan);
 }
 
+.pml-method {
+	color: var(--color-pink);
+}
+
 .pml-number {
 	color: var(--color-orange);
 }

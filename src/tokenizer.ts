@@ -44,6 +44,9 @@ export function tokenizePmlLine(line: string, extraTypes: Set<string> = new Set(
 
 	const tokens: Token[] = [];
 	let m: RegExpExecArray | null;
+	// Last non-whitespace token seen, so a word can tell whether it follows a `.`
+	// (member access) — PML2 is heavily object-oriented and those names carry meaning.
+	let prev: string | null = null;
 	TOKEN_RE.lastIndex = 0;
 	while ((m = TOKEN_RE.exec(code))) {
 		const t = m[0];
@@ -51,6 +54,8 @@ export function tokenizePmlLine(line: string, extraTypes: Set<string> = new Set(
 			tokens.push({ text: t, cls: null });
 			continue;
 		}
+		const afterDot = prev === ".";
+		prev = t;
 		if (t.startsWith("'") || t.startsWith("|")) {
 			tokens.push({ text: t, cls: "pml-string" });
 			continue;
@@ -73,7 +78,15 @@ export function tokenizePmlLine(line: string, extraTypes: Set<string> = new Set(
 		}
 		if (/^[A-Za-z_]/.test(t)) {
 			const upper = t.toUpperCase();
-			if (KEYWORDS.has(upper)) {
+			if (afterDot) {
+				// `!obj.method()`, `!!ce.name` and a `define method .foo()` declaration all land
+				// here. Methods and attributes are deliberately not distinguished: telling them
+				// apart needs the object's type, which a single-line lexer cannot know, and an
+				// attribute read looks exactly like a no-argument call. A word after a `.` is a
+				// member name even when it collides with a keyword or a type: `!part.delete`
+				// reads an attribute, it is not the DELETE statement.
+				tokens.push({ text: t, cls: "pml-method" });
+			} else if (KEYWORDS.has(upper)) {
 				tokens.push({ text: t, cls: "pml-keyword" });
 			} else if (TYPES.has(upper) || extraTypes.has(upper)) {
 				tokens.push({ text: t, cls: "pml-type" });

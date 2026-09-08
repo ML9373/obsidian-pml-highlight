@@ -18,6 +18,7 @@
   .theme-light {
     --color-purple: #7852ee; --color-blue: #086ddd; --color-green: #08b94e;
     --color-red: #e93147; --color-orange: #ec7500; --color-cyan: #00bfbc;
+    --color-pink: #d53984;
     --text-faint: #ababab; --text-muted: #5c5c5c; --text-normal: #222222;
     --background-primary: #ffffff; --code-background: #f6f6f6; --code-radius: 4px;
     --font-monospace: "SFMono-Regular", Menlo, Consolas, monospace;
@@ -26,6 +27,7 @@
   .theme-dark {
     --color-purple: #a882ff; --color-blue: #027aff; --color-green: #44cf6e;
     --color-red: #fb464c; --color-orange: #e9973f; --color-cyan: #53dfdd;
+    --color-pink: #fa99cd;
     --text-faint: #666666; --text-muted: #b3b3b3; --text-normal: #dadada;
     --background-primary: #1c1c1c; --code-background: #282828; --code-radius: 4px;
     --font-monospace: "SFMono-Regular", Menlo, Consolas, monospace;
@@ -81,10 +83,13 @@ function tokenizePmlLine(line) {
   const comment = commentIdx >= 0 ? line.slice(commentIdx) : "";
   const tokens = [];
   let m;
+  let prev = null;
   TOKEN_RE.lastIndex = 0;
   while ((m = TOKEN_RE.exec(code))) {
     const t = m[0];
     if (/^\s+$/.test(t)) { tokens.push([t, null]); continue; }
+    const afterDot = prev === ".";
+    prev = t;
     if (t.startsWith("'") || t.startsWith("|")) { tokens.push([t, "pml-string"]); continue; }
     if (t.startsWith("!!")) { tokens.push([t, "pml-var-global"]); continue; }
     if (t.startsWith("!")) { tokens.push([t, "pml-var-local"]); continue; }
@@ -92,7 +97,8 @@ function tokenizePmlLine(line) {
     if (/^\d/.test(t)) { tokens.push([t, "pml-number"]); continue; }
     if (/^[A-Za-z_]/.test(t)) {
       const upper = t.toUpperCase();
-      if (KEYWORDS.has(upper)) tokens.push([t, "pml-keyword"]);
+      if (afterDot) tokens.push([t, "pml-method"]);
+      else if (KEYWORDS.has(upper)) tokens.push([t, "pml-keyword"]);
       else if (TYPES.has(upper) || EXTRA_TYPES.has(upper)) tokens.push([t, "pml-type"]);
       else tokens.push([t, null]);
       continue;

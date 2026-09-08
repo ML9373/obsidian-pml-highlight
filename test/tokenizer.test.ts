@@ -65,3 +65,64 @@ test("tokenizing is stateless across calls (the shared regex is reset)", () => {
 	const second = classified("!a = 'x'");
 	assert.deepEqual(first, second);
 });
+
+test("a word after a dot is a member, not plain text", () => {
+	assert.deepEqual(classified("!obj.method()"), [
+		["!obj", "pml-var-local"],
+		[".", "pml-operator"],
+		["method", "pml-method"],
+		["(", "pml-operator"],
+		[")", "pml-operator"],
+	]);
+});
+
+test("a member name wins over a keyword or type collision", () => {
+	// `!part.delete` reads an attribute; DELETE the statement only exists at statement level.
+	assert.deepEqual(classified("!part.delete"), [
+		["!part", "pml-var-local"],
+		[".", "pml-operator"],
+		["delete", "pml-method"],
+	]);
+	assert.deepEqual(classified("!e.string"), [
+		["!e", "pml-var-local"],
+		[".", "pml-operator"],
+		["string", "pml-method"],
+	]);
+});
+
+test("a method declaration's name is a member", () => {
+	assert.deepEqual(classified("define method .setLength(!len is REAL)"), [
+		["define", "pml-keyword"],
+		["method", "pml-keyword"],
+		[".", "pml-operator"],
+		["setLength", "pml-method"],
+		["(", "pml-operator"],
+		["!len", "pml-var-local"],
+		["is", "pml-keyword"],
+		["REAL", "pml-type"],
+		[")", "pml-operator"],
+	]);
+});
+
+test("chained members are all classified", () => {
+	assert.deepEqual(classified("!!ce.owner.name"), [
+		["!!ce", "pml-var-global"],
+		[".", "pml-operator"],
+		["owner", "pml-method"],
+		[".", "pml-operator"],
+		["name", "pml-method"],
+	]);
+});
+
+test("a decimal number is not read as member access", () => {
+	assert.deepEqual(classified("!x = 1.5"), [
+		["!x", "pml-var-local"],
+		["=", "pml-operator"],
+		["1.5", "pml-number"],
+	]);
+});
+
+test("a dot inside a string or comment does not classify a member", () => {
+	assert.deepEqual(classified("'a.b'"), [["'a.b'", "pml-string"]]);
+	assert.deepEqual(classified("$* see !obj.method"), [["$* see !obj.method", "pml-comment"]]);
+});
