@@ -50,6 +50,8 @@ npm run preview   # serves the repo at http://localhost:4321/preview.html
 
 Open the URL, and (optionally) screenshot both panels. The tokenizer in `preview.html` is a manual port of `tokenizePmlLine`/`KEYWORDS`/`TYPES`/`TOKEN_RE` in `src/tokenizer.ts` — if you change any of those, update `preview.html` to match, and add new coverage to its `BLOCKS` array. A new token class also needs its theme variable declared in `preview.html`'s own `:root` blocks, which only define the colors currently in use: without it the token renders in the default text color and the preview silently understates the change. This is a close approximation of Obsidian's real rendering, not a substitute for actually checking inside Obsidian.
 
-## Feedback and license
+## Feedback, license and affiliation
 
 Bugs and requests: [GitHub issues](https://github.com/ML9373/obsidian-pml-highlight/issues). MIT license.
+
+This is an independent personal project, not affiliated with, endorsed by or sponsored by AVEVA. AVEVA is named only to say which language the plugin colors.
