@@ -1,6 +1,6 @@
 # PML Syntax Highlighting for Obsidian
 
-Colors AVEVA PML1/PML2 code: ` ```pml ` fenced blocks in notes (Reading mode and Live Preview), and raw `.pml`, `.pmlobj`, `.pmlfnc`, `.pmlfrm`, `.pmlmac`, `.pmlcmd` files opened directly. Also folds PML blocks.
+Colors AVEVA PML (Programmable Macro Language, PML1 and PML2) code: ` ```pml ` fenced blocks in notes (Reading mode and Live Preview), and raw `.pml`, `.pmlobj`, `.pmlfnc`, `.pmlfrm`, `.pmlmac`, `.pmlcmd` files opened directly. Also folds PML blocks.
 
 ![PML syntax highlighting in light and dark themes](docs/preview.png)
 
@@ -16,7 +16,7 @@ Colors AVEVA PML1/PML2 code: ` ```pml ` fenced blocks in notes (Reading mode and
 - Built-in types (`STRING`, `ARRAY`, `REAL`, `DBREF`, …), plus user-defined extra type words (module-specific DB elements)
 - Numbers
 - Method and member names after a `.` (`!obj.method()`, `!!ce.owner.name`, `define method .foo()`)
-- Raw `.pml`-family files open in their own editable view (line numbers, undo/redo, same highlighting) — no more plain-text fallback for these extensions
+- Raw `.pml`-family files open in their own editable view (line numbers, undo/redo, same highlighting)
 - Code folding for `if/endif`, `do/enddo`, `define method|function|object/end...`, `setup form/endsetup`, `handle/endhandle`, in both fenced blocks and raw files
 - Settings tab: toggle Reading mode / Live Preview / raw-file highlighting / folding independently, per-category color overrides
 
@@ -26,20 +26,16 @@ Not a language server: no autocompletion, no error diagnostics, no cross-file sy
 
 **From Obsidian**: Settings → Community plugins → Browse → search "PML Syntax Highlighting" → Install → Enable.
 
-**Manual install**:
+**Manual install**: download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/ML9373/obsidian-pml-highlight/releases/latest), copy them into `<vault>/.obsidian/plugins/syd-pml-highlight/`, then enable "PML Syntax Highlighting" in Obsidian's Community Plugins settings. To build the files yourself, see Dev below.
 
-```bash
-npm install --legacy-peer-deps
-npm run build
-```
-
-Copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/syd-pml-highlight/`, then enable "PML Syntax Highlighting" in Obsidian's Community Plugins settings.
+Requires Obsidian 1.13.0 or later.
 
 ## Dev
 
 ```bash
 npm install --legacy-peer-deps
-npm run dev   # esbuild watch mode
+npm run build   # writes main.js; with manifest.json and styles.css, that is the whole plugin
+npm run dev     # esbuild watch mode
 ```
 
 `--legacy-peer-deps` is required: the `obsidian` devDependency's own peer dependency on `@codemirror/state` is newer than the version this repo pins directly, and plain `npm install` refuses to resolve that conflict (ERESOLVE). It's harmless here — Obsidian provides the real CodeMirror modules at runtime (see `esbuild.config.mjs`'s `external` list); these devDependencies only exist for TypeScript's type-checking.
@@ -53,3 +49,7 @@ npm run preview   # serves the repo at http://localhost:4321/preview.html
 ```
 
 Open the URL, and (optionally) screenshot both panels. The tokenizer in `preview.html` is a manual port of `tokenizePmlLine`/`KEYWORDS`/`TYPES`/`TOKEN_RE` in `src/tokenizer.ts` — if you change any of those, update `preview.html` to match, and add new coverage to its `BLOCKS` array. A new token class also needs its theme variable declared in `preview.html`'s own `:root` blocks, which only define the colors currently in use: without it the token renders in the default text color and the preview silently understates the change. This is a close approximation of Obsidian's real rendering, not a substitute for actually checking inside Obsidian.
+
+## Feedback and license
+
+Bugs and requests: [GitHub issues](https://github.com/ML9373/obsidian-pml-highlight/issues). MIT license.
